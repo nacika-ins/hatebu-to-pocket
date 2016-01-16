@@ -22,6 +22,7 @@ struct Link {
     comment: String,
     status: String,
     title: String,
+    username: String,
 }
 
 struct ApiKey;
@@ -70,7 +71,28 @@ fn main() {
 
 
 fn callback(request: &mut Request) -> IronResult<Response> {
+    let apikey = request.get::<perRead<ApiKey>>().unwrap();
+    println!("apikey --> {}", apikey);
     let link = parse_link(request).unwrap();
+
+    if apikey.to_string() == link.apikey {
+
+        println!("--> APIキーが一致しています");
+
+        // Send Pocket
+        // FIXME
+
+        // Send Evernote
+        // FIXME
+
+        // Send Google Keep
+        // FIXME
+
+        // Send Google+
+        // FIXME
+
+    }
+
     Ok(Response::with(status::Ok))
 }
 
@@ -121,6 +143,15 @@ fn parse_link(request: &mut Request) -> Option<Link> {
                                                .to_string();
                                 println!("title --> {}", title);
 
+                                // ユーザー名
+                                let username = obj.get("username")
+                                                  .unwrap()
+                                                  .as_string()
+                                                  .unwrap()
+                                                  .clone()
+                                                  .to_string();
+                                println!("username --> {}", username);
+
                                 // ステータス
                                 let status = obj.get("status")
                                                 .unwrap()
@@ -159,6 +190,7 @@ fn parse_link(request: &mut Request) -> Option<Link> {
                                     title: title,
                                     status: status,
                                     comment: comment,
+                                    username: username,
                                 })
 
                             } else {
