@@ -1,0 +1,7 @@
+[hatena]
+apikey = ""
+
+[pocket]
+redirect_url = ""
+consumer_key = ""
+mail = ""
