@@ -10,6 +10,9 @@ rustc-serialize = "0.3"
 plugin = "0.2"
 persistent = "0"
 toml = "*"
+hyper = "*"
+router = "*"
+url = "*"
 
 [dependencies.bodyparser]
 git = "https://github.com/iron/body-parser.git"
@@ -19,3 +22,6 @@ git = "https://github.com/rustless/queryst"
 
 [dependencies.regex]
 git = "https://github.com/rust-lang-nursery/regex.git"
+
+[dependencies.pocket]
+git = "https://github.com/kstep/rust-pocket.git"
