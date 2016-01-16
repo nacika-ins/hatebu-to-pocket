@@ -6,3 +6,16 @@ authors = ["nacika"]
 
 [dependencies]
 iron="*"
+rustc-serialize = "0.3"
+plugin = "0.2"
+persistent = "0"
+toml = "*"
+
+[dependencies.bodyparser]
+git = "https://github.com/iron/body-parser.git"
+
+[dependencies.queryst]
+git = "https://github.com/rustless/queryst"
+
+[dependencies.regex]
+git = "https://github.com/rust-lang-nursery/regex.git"
