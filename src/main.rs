@@ -66,6 +66,7 @@ const MAX_BODY_LENGTH: usize = 1024 * 1024 * 10;
 
 fn main() {
 
+    // Load Config
     let mut f = File::open("config.toml").unwrap();
     let mut toml = String::new();
     let _ = f.read_to_string(&mut toml);
@@ -98,7 +99,10 @@ fn main() {
                            .as_str()
                            .unwrap()
                            .to_owned();
+    let port = option_env!("PORT").unwrap_or("3000");
+    let url = format!("localhost:{}", port);
 
+    // Get the access token
     let access_token = {
         let mut f = File::open("pocket.toml");
         if f.is_ok() {
@@ -118,13 +122,8 @@ fn main() {
             "".to_owned()
         }
     };
-    println!("access_token --> {}", access_token);
 
-    let port = option_env!("PORT").unwrap_or("3000");
-    let url = format!("localhost:{}", port);
-
-
-    // サーバー起動
+    // Start Server
     let mut router = Router::new();
     router.post("/_/hatena_pocket/", callback);
     router.get("/_/pocket_auth/", auth_pocket);
@@ -132,7 +131,6 @@ fn main() {
     chain.link_before(perRead::<bodyparser::MaxBodyLength>::one(MAX_BODY_LENGTH));
     chain.link_before(perRead::<ApiKey>::one(apikey));
     chain.link_before(perRead::<PocketMail>::one(pocket_mail));
-
 
     // Authorize Pocket
     if access_token == "" {
@@ -151,28 +149,20 @@ fn main() {
     Iron::new(chain).http("localhost:3000").unwrap();
 }
 
-
+// Authorize Pocket
 fn auth_pocket(request: &mut Request) -> IronResult<Response> {
     let pocket_mail = request.get::<perRead<PocketMail>>().unwrap();
     println!("pocket_mail --> {}", pocket_mail);
     let mut mutex = request.get_mut::<perWrite<PocketWrap>>();
     match mutex {
         Ok(mutex) => {
-            // let apikey = request.get::<perRead<ApiKey>>().unwrap();
-            // println!("apikey --> {}", apikey);
-            // println!("{:?}", request);
-            // let body = request.get::<bodyparser::Raw>();
-            // println!("{:?}", body);
 
             let mut pocket = mutex.lock().unwrap();
             let username = pocket.authorize();
 
             // Authenticate with the agreement of the e-mail address
             if username.is_ok() && pocket_mail.to_string() == username.unwrap() {
-                println!("認証に成功しました");
-                // println!("username --> {}", username.unwrap());
-                // println!("access_token --> {}", pocket.access_token().unwrap());
-
+                println!("Successful authentication");
                 let data = format!("[pocket]\naccess_token = \"{}\"",
                                    pocket.access_token().unwrap());
                 let mut f = File::create("pocket.toml").unwrap();
@@ -180,7 +170,7 @@ fn auth_pocket(request: &mut Request) -> IronResult<Response> {
                 drop(f);
 
             } else {
-                println!("認証に失敗しました");
+                println!("Authentication failure");
             }
         }
         Err(_) => {}
@@ -189,6 +179,7 @@ fn auth_pocket(request: &mut Request) -> IronResult<Response> {
     Ok(Response::with(status::Ok))
 }
 
+// Hatena Bookmark Callback
 fn callback(request: &mut Request) -> IronResult<Response> {
     let apikey = request.get::<perRead<ApiKey>>().unwrap();
     println!("apikey --> {}", apikey);
@@ -205,11 +196,12 @@ fn callback(request: &mut Request) -> IronResult<Response> {
                 let mut pocket = mutex.lock().unwrap();
                 let mut tags = link.tags.clone();
                 tags.push("hatenabookmark".to_owned());
+
+                // NOTE: エラーではないのにエラーが返ることがある
                 let added_item = pocket.add(&*link.url,
                                             Some(&*link.title),
                                             Some(&*tags.join(",")),
-                                            None)
-                                       .unwrap();
+                                            None);
                 println!("Pocket投稿結果 --> {:?}", added_item);
             }
             Err(_) => {
@@ -231,7 +223,7 @@ fn callback(request: &mut Request) -> IronResult<Response> {
     Ok(Response::with(status::Ok))
 }
 
-
+// Hatena Bookmark parse Web hook body
 fn parse_link(request: &mut Request) -> Option<Link> {
     // println!("{:?}", request);
 
@@ -248,10 +240,9 @@ fn parse_link(request: &mut Request) -> Option<Link> {
                             println!("{:?}", v);
                             if v.is_object() {
 
-                                println!("------------------------------------------------");
                                 let obj = v.as_object().unwrap();
 
-                                // APIキー
+                                // Api key
                                 let key = obj.get("key")
                                              .unwrap()
                                              .as_string()
@@ -260,7 +251,7 @@ fn parse_link(request: &mut Request) -> Option<Link> {
                                              .to_string();
                                 println!("apikey --> {}", key);
 
-                                // ハテブされたURL
+                                // Hatena bookmarked url
                                 let url = obj.get("url")
                                              .unwrap()
                                              .as_string()
@@ -269,7 +260,7 @@ fn parse_link(request: &mut Request) -> Option<Link> {
                                              .to_string();
                                 println!("url --> {}", url);
 
-                                // タイトル
+                                // title
                                 let title = obj.get("title")
                                                .unwrap()
                                                .as_string()
@@ -278,7 +269,7 @@ fn parse_link(request: &mut Request) -> Option<Link> {
                                                .to_string();
                                 println!("title --> {}", title);
 
-                                // ユーザー名
+                                // username
                                 let username = obj.get("username")
                                                   .unwrap()
                                                   .as_string()
@@ -287,7 +278,7 @@ fn parse_link(request: &mut Request) -> Option<Link> {
                                                   .to_string();
                                 println!("username --> {}", username);
 
-                                // ステータス
+                                // status
                                 let status = obj.get("status")
                                                 .unwrap()
                                                 .as_string()
@@ -296,7 +287,7 @@ fn parse_link(request: &mut Request) -> Option<Link> {
                                                 .to_string();
                                 println!("status --> {}", status);
 
-                                // コメント
+                                // comment
                                 let comment = obj.get("comment")
                                                  .unwrap()
                                                  .as_string()
@@ -305,7 +296,7 @@ fn parse_link(request: &mut Request) -> Option<Link> {
                                                  .to_string();
                                 println!("comment --> {}", comment);
 
-                                // タグ
+                                // tags
                                 let mut tags: Vec<String> = Vec::new();
                                 let re = Regex::new(r"\[([^\]]+)\]").unwrap();
                                 for cap in re.captures_iter(&*comment) {
